@@ -1,41 +1,121 @@
-#![allow(warnings)]
+use std::time::Instant;
+
 pub fn main() {
+    let now = Instant::now();
+
+
     part1();
     part2();
+    let elapsed_time = now.elapsed();
+    println!("{} μs.", elapsed_time.as_micros());
+
 }
 
+enum Direction {
+    Up,
+    Down,
+    Left,
+    Right
+}
+const MAP_SIZE: usize = 130;
 
 fn part2(){
     // Read from input file
     let input: &str = include_str!("input.txt");
     let map_in = input.lines();
-    let mut comp: [[i32; 100]; 100] = [[0; 100]; 100];
-    let mut reading_comparison = true;
-    let mut sum = 0;
-    for line in map_in {
-        // 97|75
-        if reading_comparison{
-            if line == ""{
-                reading_comparison = false;
-                continue;
+    let mut map: [[char; MAP_SIZE]; MAP_SIZE] = [['r'; MAP_SIZE]; MAP_SIZE];
+    let mut inside_the_map = true;
+    let mut forms_circle = false;
+    let mut cursor_i: usize = 0;
+    let mut cursor_j:  usize = 0;
+    let mut direction = Direction::Up;
+    {
+        let mut i = 0;
+        let mut j = 0;
+        for line in map_in {
+            j = 0;
+            for char in line.chars(){
+                if char == '\n' {
+                    continue;
+                }
+                map[i][j] = char;
+                if char == '^' {
+                    cursor_i = i;
+                    cursor_j = j;
+                    map[i][j] = '.';
+                }
+                j += 1;
             }
-            let mut split = line.split("|");
-            let a = split.next().unwrap().parse::<usize>().unwrap();
-            let b = split.next().unwrap().parse::<usize>().unwrap();
-            comp[a][b] = -1;
-            comp[b][a] = 1;
-        }else{
-            //75,47,61,53,29
-            let mut split = line.split(",");
-            if !is_sorted(split.clone(), comp){
-                let mut sorted_split = split.clone().collect::<Vec<&str>>();
-                sorted_split.sort_by(|a, b| compare(a, b, comp));
-                sum += middle(sorted_split.iter());
+            i += 1;
+        }
+    }
+
+    while inside_the_map{
+        match direction {
+            Direction::Up => {
+                for i in (0..=cursor_i).rev() {
+                    if map[i][cursor_j] == '#' {
+                        direction = Direction::Right;
+                        cursor_i = i+1;
+                        break;
+                    }else{
+                        if 
+                        map[i][cursor_j] = '^';
+                        if i == 0{
+                            inside_the_map = false;
+                        }
+                    }
+                }
+            },
+            Direction::Right => {
+                for j in cursor_j..map[cursor_i].len() {
+                    if map[cursor_i][j] == '#' {
+                        direction = Direction::Down;
+                        cursor_j = j-1;
+                        break;
+                    }else{
+                        map[cursor_i][j] = '>';
+                        if j == map[cursor_i].len()-1{
+                            inside_the_map = false;
+                        }
+                    }
+                    
+                }
+            },
+            Direction::Down => {
+                for i in cursor_i..map.len() {
+                    if map[i][cursor_j] == '#' {
+                        direction = Direction::Left;
+                        cursor_i = i-1;
+                        break;
+                    }else{
+                        map[i][cursor_j] = 'v';
+                        if i == map.len()-1{
+                            inside_the_map = false;
+                        }
+                    }
+                    
+                }
+            },
+            Direction::Left => {
+                for j in (0..=cursor_j).rev() {
+                    if map[cursor_i][j] == '#' {
+                        direction = Direction::Up;
+                        cursor_j = j+1;
+                        break;
+                    }else{
+                        map[cursor_i][j] = '<';
+                        if j == 0{
+                            inside_the_map = false;
+                        }
+                    }
+                }
             }
         }
     }
-    print!("Day 5: Part 2: {}\n", sum);
+    pretty_print_array(map);
 
+    print!("Day 6: Part 2: {}\n", total_x_in_array(map));
     
 }
 
@@ -43,66 +123,117 @@ fn part1(){
     // Read from input file
     let input: &str = include_str!("input.txt");
     let map_in = input.lines();
-    let mut comp: [[i32; 100]; 100] = [[0; 100]; 100];
-    let mut reading_comparison = true;
+    let mut map: [[char; MAP_SIZE]; MAP_SIZE] = [['r'; MAP_SIZE]; MAP_SIZE];
+    let mut inside_the_map = true;
+    let mut cursor_i: usize = 0;
+    let mut cursor_j:  usize = 0;
+    let mut direction = Direction::Up;
+    {
+        let mut i = 0;
+        let mut j = 0;
+        for line in map_in {
+            j = 0;
+            for char in line.chars(){
+                if char == '\n' {
+                    continue;
+                }
+                map[i][j] = char;
+                if char == '^' {
+                    cursor_i = i;
+                    cursor_j = j;
+                }
+                j += 1;
+            }
+            i += 1;
+        }
+    }
+
+    while inside_the_map{
+        match direction {
+            Direction::Up => {
+                for i in (0..=cursor_i).rev() {
+                    if map[i][cursor_j] == '#' {
+                        direction = Direction::Right;
+                        cursor_i = i+1;
+                        break;
+                    }else{
+                        map[i][cursor_j] = 'X';
+                        if i == 0{
+                            inside_the_map = false;
+                        }
+                    }
+                }
+            },
+            Direction::Right => {
+                for j in cursor_j..map[cursor_i].len() {
+                    if map[cursor_i][j] == '#' {
+                        direction = Direction::Down;
+                        cursor_j = j-1;
+                        break;
+                    }else{
+                        map[cursor_i][j] = 'X';
+                        if j == map[cursor_i].len()-1{
+                            inside_the_map = false;
+                        }
+                    }
+                    
+                }
+            },
+            Direction::Down => {
+                for i in cursor_i..map.len() {
+                    if map[i][cursor_j] == '#' {
+                        direction = Direction::Left;
+                        cursor_i = i-1;
+                        break;
+                    }else{
+                        map[i][cursor_j] = 'X';
+                        if i == map.len()-1{
+                            inside_the_map = false;
+                        }
+                    }
+                    
+                }
+            },
+            Direction::Left => {
+                for j in (0..=cursor_j).rev() {
+                    if map[cursor_i][j] == '#' {
+                        direction = Direction::Up;
+                        cursor_j = j+1;
+                        break;
+                    }else{
+                        map[cursor_i][j] = 'X';
+                        if j == 0{
+                            inside_the_map = false;
+                        }
+                    }
+                    
+                }
+            }
+        }
+    }
+    // pretty_print_array(map);
+
+    print!("Day 6: Part 1: {}\n", total_x_in_array(map));
+    
+}
+
+fn pretty_print_array(array: [[char; MAP_SIZE]; MAP_SIZE]){
+    for i in 0..array.len(){
+        for j in 0..array[i].len(){
+            print!("{}", array[i][j]);
+        }
+        print!("\n");
+    }
+}
+
+fn total_x_in_array(array: [[char; MAP_SIZE]; MAP_SIZE]) -> i32{
     let mut sum = 0;
-    for line in map_in {
-        // 97|75
-        if reading_comparison{
-            if line == ""{
-                reading_comparison = false;
-                continue;
-            }
-            let mut split = line.split("|");
-            let a = split.next().unwrap().parse::<usize>().unwrap();
-            let b = split.next().unwrap().parse::<usize>().unwrap();
-            comp[a][b] = -1;
-            comp[b][a] = 1;
-        }else{
-            //75,47,61,53,29
-            let mut split = line.split(",");
-            if is_sorted(split.clone(), comp){
-                let split_vec: Vec<&str> = split.collect();
-                sum += middle(split_vec.iter());
+    for i in 0..array.len(){
+        for j in 0..array[i].len(){
+            if array[i][j] == 'X'{
+                sum += 1;
             }
         }
     }
-    print!("Day 5: Part 1: {}\n", sum);
-    
-}
-fn compare(a: &&str, b: &&str, comp: [[i32; 100]; 100]) -> std::cmp::Ordering {
-    let a = a.parse::<usize>().unwrap();
-    let b = b.parse::<usize>().unwrap();
-    match comp[a][b]{
-        -1 => std::cmp::Ordering::Less,
-        1 => std::cmp::Ordering::Greater,
-        0 => std::cmp::Ordering::Equal,
-        _ => std::cmp::Ordering::Equal,
-    }
-    
-}
-
-fn is_sorted( split: std::str::Split<&str>, comp: [[i32; 100]; 100]) -> bool{
-    let mut vec: Vec<i32> = Vec::new();
-    for s in split{
-        vec.push(s.parse::<i32>().unwrap());
-    }
-    let len = vec.len();
-    for i in 0..len-1{
-        if comp[vec[i] as usize][vec[i+1] as usize] == 1{
-            return false;
-        }else if comp[vec[i] as usize][vec[i+1] as usize] == 0{
-            println!("Non-existing pairing {} {}", vec[i], vec[i+1]);
-        }
-    }
-    return true;
-}
-
-fn middle(split: std::slice::Iter<&str>) -> i32{
-    let mut vec: Vec<i32> = Vec::new();
-    for s in split{
-        vec.push(s.parse::<i32>().unwrap());
-    }
-    let len = vec.len();
-    return vec[len/2];
+    return sum;
 }
