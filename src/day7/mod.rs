@@ -1,108 +1,136 @@
 #![allow(warnings)]
+
+use core::num;
+use std::result;
+use std::time::Instant;
+
+
 pub fn main() {
+    let now = Instant::now();
+
     part1();
+    let elapsed_time = now.elapsed();
+    println!("{} μs.", elapsed_time.as_micros());
+
+    let now = Instant::now();
+
     part2();
+    let elapsed_time = now.elapsed();
+    println!("{} μs.", elapsed_time.as_micros());
 }
 
+#[derive(PartialEq, Debug)]
+enum Operation {
+    Add,
+    Multiply,
+    Concat,
+}
+#[derive(PartialEq, Debug)]
+enum Small_Operation {
+    Add,
+    Multiply
+}
 
 fn part2(){
     // Read from input file
     let input: &str = include_str!("input.txt");
     let map_in = input.lines();
-    let mut comp: [[i32; 100]; 100] = [[0; 100]; 100];
-    let mut reading_comparison = true;
     let mut sum = 0;
     for line in map_in {
-        // 97|75
-        if reading_comparison{
-            if line == ""{
-                reading_comparison = false;
-                continue;
-            }
-            let mut split = line.split("|");
-            let a = split.next().unwrap().parse::<usize>().unwrap();
-            let b = split.next().unwrap().parse::<usize>().unwrap();
-            comp[a][b] = -1;
-            comp[b][a] = 1;
-        }else{
-            //75,47,61,53,29
-            let mut split = line.split(",");
-            if !is_sorted(split.clone(), comp){
-                let mut sorted_split = split.clone().collect::<Vec<&str>>();
-                sorted_split.sort_by(|a, b| compare(a, b, comp));
-                sum += middle(sorted_split.iter());
-            }
+        let mut split_line = line.split(':');
+        let total = split_line.next().unwrap().parse::<u64>().expect( "Not a number");
+        let parts = split_line.next().unwrap().split_whitespace().map(|num| num.parse::<u64>().expect("Not a number")).collect::<Vec<u64>>();
+        if combine_to_total_with_concat(parts, total){
+            sum += total;
         }
     }
-    print!("Day 5: Part 2: {}\n", sum);
-
-    
+    println!("Day 7: Part 2:  {}",  sum);
 }
 
 fn part1(){
     // Read from input file
     let input: &str = include_str!("input.txt");
     let map_in = input.lines();
-    let mut comp: [[i32; 100]; 100] = [[0; 100]; 100];
-    let mut reading_comparison = true;
     let mut sum = 0;
     for line in map_in {
-        // 97|75
-        if reading_comparison{
-            if line == ""{
-                reading_comparison = false;
-                continue;
-            }
-            let mut split = line.split("|");
-            let a = split.next().unwrap().parse::<usize>().unwrap();
-            let b = split.next().unwrap().parse::<usize>().unwrap();
-            comp[a][b] = -1;
-            comp[b][a] = 1;
-        }else{
-            //75,47,61,53,29
-            let mut split = line.split(",");
-            if is_sorted(split.clone(), comp){
-                let split_vec: Vec<&str> = split.collect();
-                sum += middle(split_vec.iter());
+        let mut split_line = line.split(':');
+        let total = split_line.next().unwrap().parse::<u64>().expect( "Not a number");
+        let parts = split_line.next().unwrap().split_whitespace().map(|num| num.parse::<u64>().expect("Not a number")).collect::<Vec<u64>>();
+        if combine_to_total(parts, total){
+            sum += total;
+        }
+    }
+    println!("Day 7: Part 1: {}",  sum);
+}
+
+
+fn combine_to_total_with_concat(mut parts: Vec<u64>, total: u64) -> bool
+{
+    for i in 0..parts.len(){
+        if parts[i] == total{
+            return true;
+        }
+        if i + 1 < parts.len(){
+            let mut new_parts = parts.clone();
+            new_parts[i] = (parts[i].to_string() + &parts[i+1].to_string()).parse::<u64>().expect("Concat is not a number");
+            new_parts.remove(i+1);
+            if combine_to_total(new_parts, total){
+                return true;
             }
         }
     }
-    print!("Day 5: Part 1: {}\n", sum);
-    
-}
-fn compare(a: &&str, b: &&str, comp: [[i32; 100]; 100]) -> std::cmp::Ordering {
-    let a = a.parse::<usize>().unwrap();
-    let b = b.parse::<usize>().unwrap();
-    match comp[a][b]{
-        -1 => std::cmp::Ordering::Less,
-        1 => std::cmp::Ordering::Greater,
-        0 => std::cmp::Ordering::Equal,
-        _ => std::cmp::Ordering::Equal,
-    }
-    
+    false
 }
 
-fn is_sorted( split: std::str::Split<&str>, comp: [[i32; 100]; 100]) -> bool{
-    let mut vec: Vec<i32> = Vec::new();
-    for s in split{
-        vec.push(s.parse::<i32>().unwrap());
+fn combine_to_total(mut parts: Vec<u64>, total: u64) -> bool
+{
+    fn pop_stacks(result_stack: &mut Vec<u64>, operation_stack: &mut Vec<Small_Operation>) {
+        result_stack.pop();
+        operation_stack.pop();
     }
-    let len = vec.len();
-    for i in 0..len-1{
-        if comp[vec[i] as usize][vec[i+1] as usize] == 1{
-            return false;
-        }else if comp[vec[i] as usize][vec[i+1] as usize] == 0{
-            println!("Non-existing pairing {} {}", vec[i], vec[i+1]);
+    let mut result_stack: Vec<u64> = vec![parts[0]*parts[1]];
+    let mut operation_stack: Vec<Small_Operation> = vec![Small_Operation::Multiply];
+    while result_stack.len() < parts.len(){
+
+        if result_stack[result_stack.len()-1] == total{
+            return true;
+        }
+        if result_stack[result_stack.len()-1] > total || result_stack.len() + 1 == parts.len(){
+            match operation_stack.pop().unwrap(){
+                Small_Operation::Add => {
+                    result_stack.pop();
+                    if result_stack.len() != 0{
+                        while operation_stack.len() != 0 && operation_stack[operation_stack.len()-1] == Small_Operation::Add{
+                            pop_stacks(&mut result_stack, &mut operation_stack);
+                        }
+                    }
+                    if result_stack.len() == 0{
+                        return false;
+                    }
+                    operation_stack.pop();
+                    result_stack.pop();
+                    operation_stack.push(Small_Operation::Add);
+                    if result_stack.len() == 0{
+                        result_stack.push(parts[0] + parts[1]);
+                    }else{
+                        result_stack.push(result_stack[result_stack.len()-1] + parts[result_stack.len()  + 1]);
+                    }                },
+                    Small_Operation::Multiply => {
+                    result_stack.pop();
+                    if result_stack.len() == 0{
+                        result_stack.push(parts[0] + parts[1]);
+                    }else{
+                        result_stack.push(result_stack[result_stack.len()-1] + parts[result_stack.len()  + 1]);
+                    }
+                    operation_stack.push(Small_Operation::Add);
+                }
+            }
+        }else if result_stack[result_stack.len()-1] < total{
+
+            operation_stack.push(Small_Operation::Multiply);
+            result_stack.push(result_stack[result_stack.len()-1] * parts[result_stack.len() + 1]);  
+            
         }
     }
-    return true;
-}
-
-fn middle(split: std::slice::Iter<&str>) -> i32{
-    let mut vec: Vec<i32> = Vec::new();
-    for s in split{
-        vec.push(s.parse::<i32>().unwrap());
-    }
-    let len = vec.len();
-    return vec[len/2];
+    result_stack[result_stack.len()-1] == total    
 }

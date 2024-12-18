@@ -47,9 +47,7 @@ fn _part2(){
             for i in 0..order_parts.len(){
                 let mut new_parts = order_parts.clone();
                 new_parts.remove(i);
-                if _is_quite_safe(new_parts.iter()){
-                    return true;
-                }
+                return _is_quite_safe(new_parts.iter());
             }
             return false;
         }
